@@ -10,6 +10,7 @@ using DotNetNuke.Entities.Profile;
 using System.Data;
 using System.Collections.Generic;
 using System.Web.UI.WebControls;
+using System.Linq;
 
 #endregion
 
@@ -40,6 +41,7 @@ namespace DNN.Authentication.SAML
                 config.RoleAttribute = txtRoleAttributeName.Text;
                 config.RequiredRoles = txtRequiredRolesTextbox.Text;
                 config.RedirectURL = txtRedirectURL.Text;
+                config.DefaultPassword = string.IsNullOrWhiteSpace(this.txtDefaultPasswordTextbox.Text) || this.txtDefaultPasswordTextbox.Text.All(c => c == '…') ? config.DefaultPassword : this.txtDefaultPasswordTextbox.Text;
 
                 DNNAuthenticationSAMLAuthenticationConfig.UpdateConfig(config);
 
@@ -83,6 +85,7 @@ namespace DNN.Authentication.SAML
                 txtRoleAttributeName.Text = config.RoleAttribute;
                 txtRequiredRolesTextbox.Text = config.RequiredRoles;
                 txtRedirectURL.Text = config.RedirectURL;
+                txtDefaultPasswordTextbox.Attributes.Add("value", new string('…', config.DefaultPassword?.Length ?? 0));
             }
             catch (Exception exc)
             {
@@ -196,6 +199,10 @@ namespace DNN.Authentication.SAML
             setting = Null.NullString;
             if (PortalController.Instance.GetPortalSettings(portalID).TryGetValue(PREFIX + "RedirectURL", out setting))
                 RedirectURL = setting;
+
+            setting = Null.NullString;
+            if (PortalController.Instance.GetPortalSettings(portalID).TryGetValue(PREFIX + "DefaultPassword", out setting))
+                DefaultPassword = setting;
         }
 
         public bool Enabled { get; set; }
@@ -206,6 +213,8 @@ namespace DNN.Authentication.SAML
         public string DNNAuthName { get; set; }
         public string TheirCert { get; set; }
         public string RedirectURL { get; set; }
+
+        public string DefaultPassword { get; set; }
 
         public string usrFirstName { get; set; }
         public string usrLastName { get; set; }
@@ -232,6 +241,7 @@ namespace DNN.Authentication.SAML
             PortalController.UpdatePortalSetting(config.PortalID, PREFIX + "DNNAuthName", config.DNNAuthName);
             PortalController.UpdatePortalSetting(config.PortalID, PREFIX + "TheirCert", config.TheirCert);
             PortalController.UpdatePortalSetting(config.PortalID, PREFIX + "RedirectURL", config.RedirectURL);
+            PortalController.UpdatePortalSetting(config.PortalID, PREFIX + "DefaultPassword", config.DefaultPassword);
 
             //ClearConfig(config.PortalID);
             PortalController.UpdatePortalSetting(config.PortalID, usrPREFIX + "FirstName", config.usrFirstName);

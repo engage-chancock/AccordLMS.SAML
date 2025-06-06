@@ -60,6 +60,10 @@
     <asp:Label class="samlLabel" ID="lblRedirectURL" runat="server" Text="Redirect URL:" />
     <asp:TextBox class="samlTextbox" runat="server" ID="txtRedirectURL"></asp:TextBox>
 </div>
+<div class="dnnFormItem">
+    <asp:Label runat="server"  class="samlLabel" id="lblDefaultPassword" text="Default Password" />
+    <asp:TextBox runat="server" id="txtDefaultPasswordTextbox" class="samlTextbox" TextMode="Password"></asp:TextBox>
+</div>
 <h3 class="samlHeading">User Profile Mappings</h3>
 <p class="samlParagraph">To map incoming values to their respective DNN Profile values provide the attribute name that should be used to lookup the value in the incoming SAML assertion.</p>
 <div class="dnnFormItem">
