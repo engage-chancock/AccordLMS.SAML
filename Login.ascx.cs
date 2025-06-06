@@ -78,6 +78,8 @@ namespace DNN.Authentication.SAML
                         //specify the certificate that your SAML provider has given to you
                         string samlCertificate = config.TheirCert;
 
+                        string redirectUrl = "/";
+
                         Saml.Response samlResponse = new Saml.Response(samlCertificate);
                         LogToEventLog("Request:", Request.Form["SAMLResponse"].ToString());
                         samlResponse.LoadXmlFromBase64(Request.Form["SAMLResponse"]); //SAML providers usually POST the data into this var
@@ -157,6 +159,27 @@ namespace DNN.Authentication.SAML
                                         StringSplitOptions.RemoveEmptyEntries).ToList();
                                 }
 
+                                redirectUrl = samlResponse.GetUserProperty("RelayState");
+                                if (!string.IsNullOrWhiteSpace(redirectUrl) && redirectUrl.Contains("returnurl="))
+                                {
+                                    redirectUrl = HttpUtility.UrlDecode(redirectUrl);
+                                    redirectUrl = redirectUrl.Substring(redirectUrl.IndexOf("returnurl=")).Substring(10);
+                                    if (redirectUrl.Contains("&amp;"))
+                                    {
+                                        var urlLength = redirectUrl.IndexOf("&amp");
+                                        redirectUrl = redirectUrl.Substring(0, urlLength);
+                                    }
+
+                                    if (redirectUrl.Contains("&"))
+                                    {
+                                        var urlLength = redirectUrl.IndexOf("&");
+                                        redirectUrl = redirectUrl.Substring(0, urlLength);
+                                    }
+                                }
+                                else
+                                {
+                                    redirectUrl = "/";
+                                }
                             }
                             catch (Exception ex)
                             {
@@ -282,26 +305,37 @@ namespace DNN.Authentication.SAML
                             UserLoginStatus loginStatus = validStatus == UserValidStatus.VALID ? UserLoginStatus.LOGIN_SUCCESS : UserLoginStatus.LOGIN_FAILURE;
                             if (loginStatus == UserLoginStatus.LOGIN_SUCCESS)
                             {
-                                SetLoginDate(username);     
+                                SetLoginDate(username);
                                 //Raise UserAuthenticated Event
-                                var eventArgs = new UserAuthenticatedEventArgs(userInfo, userInfo.Email, loginStatus, config.DNNAuthName) //"DNN" is default, "SAML" is this one.  How did it get named SAML????
-                                {
-                                    Authenticated = true,
-                                    Message = "User authorized",
-                                    RememberMe = false
-                                };
-
-                                UserController.UserLogin(PortalId, userInfo, PortalSettings.PortalName, Request.UserHostAddress, false);
-
-                                if (config.RedirectURL != Null.NullString)
-                                {
-                                    if(config.RedirectURL.Trim() != String.Empty && config.RedirectURL.Trim() != "")
+                                var eventArgs =
+                                    new UserAuthenticatedEventArgs(userInfo, userInfo.Email, loginStatus,
+                                            config
+                                                .DNNAuthName) //"DNN" is default, "SAML" is this one.  How did it get named SAML????
                                     {
-                                        Response.Redirect(config.RedirectURL, false);
-                                    }
+                                        Authenticated = true,
+                                        Message = "User authorized",
+                                        RememberMe = false,
+                                    };
+
+
+                                RedirectURL = redirectUrl;
+                                if (!string.IsNullOrEmpty(config.RedirectURL))
+                                {
+                                    RedirectURL = config.RedirectURL;
                                 }
 
-                                //OnUserAuthenticated(eventArgs);                                                            
+                                try
+                                {
+                                    UserController.UserLogin(PortalId, userInfo, PortalSettings.PortalName, Request.UserHostAddress, false);
+                                    OnUserAuthenticated(eventArgs);
+                                }
+                                catch (System.Threading.ThreadAbortException tae)
+                                {
+                                    if (!string.IsNullOrWhiteSpace(RedirectURL))
+                                    {
+                                        Response.Redirect(Page.ResolveUrl(RedirectURL), false);
+                                    }
+                                }
                             }
                         }
                         else
